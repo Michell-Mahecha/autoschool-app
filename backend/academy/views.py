@@ -19,12 +19,6 @@ class StudentViewSet(viewsets.ModelViewSet):
     def upload_picture(self, request, pk=None):
         student = self.get_object()
 
-        # TODO(actividad): Validar que exista `profile_picture` en request.FILES.
-        # TODO(actividad): Validar tipo/tamano basico del archivo antes de guardar.
-        # TODO(actividad): Usar StudentPictureSerializer para persistir la imagen.
-        # TODO(actividad): Retornar StudentSerializer(student, context={"request": request}).data
-        #                  cuando la subida sea exitosa.
-
         incoming_file = request.FILES.get('profile_picture')
         if not incoming_file:
             return Response(
@@ -32,15 +26,28 @@ class StudentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        return Response(
-            {
-                'detail': (
-                    'TODO_ACTIVIDAD: completa la logica de guardado en '
-                    'academy.views.StudentViewSet.upload_picture'
-                )
-            },
-            status=status.HTTP_501_NOT_IMPLEMENTED,
-        )
+        allowed_types = ['image/jpeg', 'image/png']
+        if incoming_file.content_type not in allowed_types:
+            return Response(
+                {'detail': 'Solo se permiten imágenes JPEG o PNG.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        max_size = 2 * 1024 * 1024
+        if incoming_file.size > max_size:
+            return Response(
+                {'detail': 'La imagen no puede superar los 2MB.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = StudentPictureSerializer(student, data=request.FILES, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                StudentSerializer(student, context={'request': request}).data,
+                status=status.HTTP_200_OK,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class InstructorViewSet(viewsets.ModelViewSet):
     pass
@@ -50,6 +57,7 @@ class VehicleViewSet(viewsets.ModelViewSet):
 
 class CourseViewSet(viewsets.ModelViewSet):
     pass
+
 class EnrollmentViewSet(viewsets.ModelViewSet):
     pass
 

@@ -49,7 +49,6 @@ export function UploadPictureModal({ student, onClose, onSuccess }) {
 
   useEffect(() => {
     if (!isCameraOpen || !videoRef.current || !streamRef.current) return;
-
     const video = videoRef.current;
     video.srcObject = streamRef.current;
     video.muted = true;
@@ -89,8 +88,6 @@ export function UploadPictureModal({ student, onClose, onSuccess }) {
   };
 
   const capturePhoto = () => {
-    // TODO(actividad): Completar captura desde webcam y convertir canvas -> File.
-    // Pista: usa canvas.toBlob y crea un File para reutilizar el mismo flujo de subida.
     if (!videoRef.current) return;
     const video = videoRef.current;
     if (!video.videoWidth || !video.videoHeight) return;
@@ -104,13 +101,9 @@ export function UploadPictureModal({ student, onClose, onSuccess }) {
 
     canvas.toBlob((blob) => {
       if (!blob) return;
-
-      // TODO(actividad): construir el archivo capturado y actualizar estados.
-      // const file = new File([blob], "camera-capture.jpg", { type: "image/jpeg" });
-      // setUploadFile(file);
-      // setUploadPreview(URL.createObjectURL(file));
-
-      setUploadError("TODO: completar guardado de captura desde webcam.");
+      const file = new File([blob], "camera-capture.jpg", { type: "image/jpeg" });
+      setUploadFile(file);
+      setUploadPreview(URL.createObjectURL(file));
       stopCamera();
     }, "image/jpeg", 0.9);
   };
@@ -124,9 +117,17 @@ export function UploadPictureModal({ student, onClose, onSuccess }) {
     const file = e.target.files[0];
     if (!file) return;
 
-    // TODO(actividad): agregar validaciones basicas (tipo y tamano maximo).
-    // Ejemplos sugeridos: image/jpeg, image/png y un limite de 2MB.
+    const allowedTypes = ['image/jpeg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      setUploadError('Solo se permiten imágenes JPEG o PNG.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setUploadError('La imagen no puede superar los 2MB.');
+      return;
+    }
 
+    setUploadError('');
     setUploadFile(file);
     setUploadPreview(URL.createObjectURL(file));
   };
@@ -136,15 +137,12 @@ export function UploadPictureModal({ student, onClose, onSuccess }) {
     try {
       setIsUploading(true);
       setUploadError("");
-
-      // TODO(actividad): mejorar manejo de estado y errores durante el submit.
-      // Debe consumir studentsService.uploadPicture y cerrar modal en exito.
       const updated = await studentsService.uploadPicture(student.id, uploadFile);
       onSuccess(updated);
       handleClose();
     } catch (err) {
       setUploadError(
-        err?.message || "Error al subir la imagen. Completa la implementacion pendiente."
+        err?.response?.data?.detail || err?.message || "Error al subir la imagen."
       );
     } finally {
       setIsUploading(false);
